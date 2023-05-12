@@ -83,8 +83,7 @@ try:
         a = mx.nd.array([1.0, 2.0, 3.0], ctx=ctx)
         b = mx.nd.array([4.0, 5.0, 6.0], ctx=ctx)
         c = TVMAddOp(a, b)
-        print('a + b = c\n{} + {} = {}\n'.format(a.asnumpy(),
-                                                 b.asnumpy(), c.asnumpy()))  # [5.0, 7.0, 9.0]
+        print(f'a + b = c\n{a.asnumpy()} + {b.asnumpy()} = {c.asnumpy()}\n')
 except ImportError:
     pass
 
@@ -99,6 +98,6 @@ try:
         a = torch.tensor([1.0, 2.0, 3.0], device=device)
         b = torch.tensor([4.0, 5.0, 6.0], device=device)
         c = TVMAddOp(a, b)
-        print('a + b = c\n{} + {} = {}\n'.format(a, b, c))  # [5.0, 7.0, 9.0]
+        print(f'a + b = c\n{a} + {b} = {c}\n')
 except ImportError:
     pass

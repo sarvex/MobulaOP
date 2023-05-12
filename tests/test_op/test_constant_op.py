@@ -27,7 +27,7 @@ class ConstantOP:
 class ConstantOP2:
     def __init__(self, constant):
         self.constant = self.F.array(constant)
-        self.constant_buffer = dict()
+        self.constant_buffer = {}
 
     def forward(self, x):
         ctx = x.context

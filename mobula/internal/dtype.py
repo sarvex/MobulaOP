@@ -23,9 +23,9 @@ CTYPENAME2CTYPE = {
 def get_ctype_name(ctype):
     # ctype.__name__ = 'c_xxx'
     if ctype in CTYPE_INTS[2:]:
-        return 'int{}_t'.format(ctypes.sizeof(ctype) * 8)
+        return f'int{ctypes.sizeof(ctype) * 8}_t'
     if ctype in CTYPE_UINTS[2:]:
-        return 'uint{}_t'.format(ctypes.sizeof(ctype) * 8)
+        return f'uint{ctypes.sizeof(ctype) * 8}_t'
     name = ctype.__name__
     if name.startswith('c_'):
         name = name[2:]
@@ -54,7 +54,7 @@ class DType:
             ctype_name = get_ctype_name(basic_type)
 
             if self.is_const:
-                ctype_name = 'const {}'.format(ctype_name)
+                ctype_name = f'const {ctype_name}'
             if is_pointer:
                 ctype_name += '*'
             cname = ctype_name
@@ -70,7 +70,7 @@ class DType:
 
 class CStruct:
     def __init__(self, name, is_const, cstruct, constructor):
-        self.cname = name + '*'
+        self.cname = f'{name}*'
         self.cstruct = cstruct
         self.constructor = constructor
         self.is_pointer = True

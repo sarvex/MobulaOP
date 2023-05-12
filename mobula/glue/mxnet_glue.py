@@ -56,21 +56,21 @@ def get_async_func(cpp_info, func_idcode_hash):
     cpp_info.dll.RegisterMXAPI.argtypes = [ctypes.c_void_p] * len(MX_LIB_APIS)
     cpp_info.dll.RegisterMXAPI(*MX_LIB_APIS)
     register_func_for_mx = getattr(
-        cpp_info.dll, func_idcode_hash + '_register_mx', None)
+        cpp_info.dll, f'{func_idcode_hash}_register_mx', None
+    )
     if register_func_for_mx is None:
         return None
-    async_func_for_mx = getattr(cpp_info.dll, func_idcode_hash + '_async_mx')
+    async_func_for_mx = getattr(cpp_info.dll, f'{func_idcode_hash}_async_mx')
     register_func_for_mx.restype = ctypes.c_void_p
     packed_func_mx = ctypes.c_void_p(register_func_for_mx())
-    func = lambda *args: async_func_for_mx(packed_func_mx, *args)
-    return func
+    return lambda *args: async_func_for_mx(packed_func_mx, *args)
 
 
 class OpGen(object):
     def __init__(self, op, name):
         self.op = op
         self.name = name
-        self.cache = dict()
+        self.cache = {}
 
     def __call__(self, *args, **kwargs):
         inputs, pars = get_in_data(op=self.op, *args, **kwargs)
@@ -124,6 +124,7 @@ class OpGen(object):
                     num_inputs = len(get_varnames(self._forward))
                     for i in range(num_inputs):
                         self.assign(in_grad[i], req[i], out[i])
+
             mx_op_dict = dict(
                 __init__=__init__,
                 __getattr__=__getattr__,
@@ -134,9 +135,7 @@ class OpGen(object):
                 F=property(lambda self: mx.nd),
             )
             mx_op_dict.update(INPUT_FUNCS)
-            mx_op = type('_%s_MX_OP' % op_name,
-                         (op, mx.operator.CustomOp),
-                         mx_op_dict)
+            mx_op = type(f'_{op_name}_MX_OP', (op, mx.operator.CustomOp), mx_op_dict)
             return mx_op
 
         def get_mx_prop(op, mx_op):
@@ -183,9 +182,11 @@ class OpGen(object):
                 if hasattr(op, o):
                     mx_prop_dict[o] = getattr(op, o)
 
-            mx_prop = type('_%s_MX_OP_PROP' % op_name,
-                           (op, mx.operator.CustomOpProp),
-                           mx_prop_dict)
+            mx_prop = type(
+                f'_{op_name}_MX_OP_PROP',
+                (op, mx.operator.CustomOpProp),
+                mx_prop_dict,
+            )
             return mx_prop
 
         mx_op = get_mx_op(op)

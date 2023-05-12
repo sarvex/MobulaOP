@@ -28,9 +28,7 @@ def create_processes(num_processes):
         p.start()
     for p in ps:
         p.join()
-    qs = []
-    for i in range(num_processes):
-        qs.append(q.get())
+    qs = [q.get() for _ in range(num_processes)]
     qs.sort()
     for i in range(num_processes):
         assert qs[i] == i, qs

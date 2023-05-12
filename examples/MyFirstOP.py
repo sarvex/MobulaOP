@@ -23,8 +23,7 @@ try:
     a = mx.nd.array([1, 2, 3])
     b = mx.nd.array([4, 5, 6])
     c = MyFirstOP(a, b)
-    print('a + b = c\n{} + {} = {}\n'.format(a.asnumpy(),
-                                             b.asnumpy(), c.asnumpy()))  # [5, 7, 9]
+    print(f'a + b = c\n{a.asnumpy()} + {b.asnumpy()} = {c.asnumpy()}\n')
 
     if hasattr(mx, 'numpy'):
         # MXNet NumPy-compatible API
@@ -32,8 +31,7 @@ try:
         a = mx.np.array([1, 2, 3])
         b = mx.np.array([4, 5, 6])
         c = MyFirstOP(a, b)
-        print('a + b = c\n{} + {} = {}\n'.format(a.asnumpy(),
-                                                 b.asnumpy(), c.asnumpy()))  # [5, 7, 9]
+        print(f'a + b = c\n{a.asnumpy()} + {b.asnumpy()} = {c.asnumpy()}\n')
 except ImportError:
     pass
 
@@ -44,7 +42,7 @@ try:
     b = np.array([4, 5, 6])
     op = MyFirstOP[np.ndarray]()
     c = op(a, b)
-    print('a + b = c\n{} + {} = {}\n'.format(a, b, c))  # [5, 7, 9]
+    print(f'a + b = c\n{a} + {b} = {c}\n')
 except ImportError:
     pass
 
@@ -54,7 +52,7 @@ try:
     a = torch.tensor([1, 2, 3])
     b = torch.tensor([4, 5, 6])
     c = MyFirstOP(a, b)
-    print('a + b = c\n{} + {} = {}\n'.format(a, b, c))  # [5, 7, 9]
+    print(f'a + b = c\n{a} + {b} = {c}\n')
 except ImportError:
     pass
 
@@ -65,6 +63,6 @@ try:
     b = cp.array([4, 5, 6])
     op = MyFirstOP[cp.ndarray]()
     c = op(a, b)
-    print('a + b = c\n{} + {} = {}\n'.format(a, b, c))  # [5, 7, 9]
+    print(f'a + b = c\n{a} + {b} = {c}\n')
 except ImportError:
     pass

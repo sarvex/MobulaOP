@@ -24,4 +24,4 @@ assert_almost_equal(a.grad, dc)
 assert_almost_equal(b.grad, dc)
 
 print('Okay :-)')
-print('a + b = c \n {} + {} = {}'.format(a.asnumpy(), b.asnumpy(), c.asnumpy()))
+print(f'a + b = c \n {a.asnumpy()} + {b.asnumpy()} = {c.asnumpy()}')

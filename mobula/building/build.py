@@ -29,14 +29,13 @@ def source_to_o(build_path, src_obj, compiler, cflags):
             inc_flags = Flags()
             for path in INC_PATHS:
                 p = os.path.join(ENV_PATH, path)
-                inc_flags.add_string('-I{}'.format(p))
+                inc_flags.add_string(f'-I{p}')
             cflags_sp = str(cflags).split()
             def_flags = ' '.join(
                 [s for s in cflags_sp if len(s) > 2 and s[:2] == '-D'])
-            command = 'cl /EHsc /O2 %s %s -c %s -Fo%s' % (
-                def_flags, inc_flags, src, build_name)
+            command = f'cl /EHsc /O2 {def_flags} {inc_flags} -c {src} -Fo{build_name}'
         else:
-            command = '%s %s %s -c -o %s' % (compiler, src, cflags, build_name)
+            command = f'{compiler} {src} {cflags} -c -o {build_name}'
         commands.append(command)
     run_command_parallel(commands)
     return updated
@@ -44,10 +43,9 @@ def source_to_o(build_path, src_obj, compiler, cflags):
 
 def o_to_so(target_name, objs, linker, ldflags):
     if OS_IS_WINDOWS and not command_exists(linker):
-        command = 'link -DLL %s -out:%s' % (' '.join(objs), target_name)
+        command = f"link -DLL {' '.join(objs)} -out:{target_name}"
     else:
-        command = '%s %s %s -o %s' % (linker,
-                                      ' '.join(objs), ldflags, target_name)
+        command = f"{linker} {' '.join(objs)} {ldflags} -o {target_name}"
     run_command(command)
 
 
@@ -72,9 +70,8 @@ def get_common_flags():
     INC_PATHS.extend(['./cpp/include', '../3rdparty/dlpack/include',
                       '../3rdparty/tvm_packed_func'])
     for path in INC_PATHS:
-        p = os.path.join(ENV_PATH, path)
-        if p:
-            COMMON_FLAGS.add_string('-I{}'.format(p))
+        if p := os.path.join(ENV_PATH, path):
+            COMMON_FLAGS.add_string(f'-I{p}')
 
     return COMMON_FLAGS
 
@@ -141,8 +138,7 @@ BUILD_FLAGS = dict(
 
 def get_build_flag(ctx_name):
     flags = BUILD_FLAGS.get(ctx_name, None)()
-    assert flags is not None, ValueError(
-        'Unsupported Context: {} -('.format(ctx_name))
+    assert flags is not None, ValueError(f'Unsupported Context: {ctx_name} -(')
     return flags
 
 

@@ -3,10 +3,11 @@ import torch
 from .common import *
 
 
-THDTYPE2CTYPE_MAP = dict()
-THDTYPE2CTYPE_MAP[torch.int] = ctypes.c_int
-THDTYPE2CTYPE_MAP[torch.float] = ctypes.c_float
-THDTYPE2CTYPE_MAP[torch.double] = ctypes.c_double
+THDTYPE2CTYPE_MAP = {
+    torch.int: ctypes.c_int,
+    torch.float: ctypes.c_float,
+    torch.double: ctypes.c_double,
+}
 
 
 class TorchTensor(MobulaTensor):
@@ -25,7 +26,7 @@ class TorchTensor(MobulaTensor):
     def ctype(self):
         dtype = self.tensor.dtype
         ctype = THDTYPE2CTYPE_MAP.get(dtype, None)
-        assert ctype is not None, TypeError('Unknown Type: {}'.format(dtype))
+        assert ctype is not None, TypeError(f'Unknown Type: {dtype}')
         return ctype
 
     @property
@@ -40,7 +41,7 @@ class OpGen(object):
     def __init__(self, op, name):
         self.op = op
         self.name = name
-        self.cache = dict()
+        self.cache = {}
 
     def __call__(self, *args, **kwargs):
         if self.name not in self.cache:
@@ -71,9 +72,7 @@ class OpGen(object):
                         out = [out]
                     for i, x in enumerate(out):
                         self.assign(self.out_data[i], self.req[i], x)
-                if len(self.out_data) == 1:
-                    return self.out_data[0]
-                return tuple(self.out_data)
+                return self.out_data[0] if len(self.out_data) == 1 else tuple(self.out_data)
 
             def backward(ctx, *args, **kwargs):
                 self = ctx.self
@@ -99,9 +98,11 @@ class OpGen(object):
                 forward=staticmethod(forward),
                 backward=staticmethod(backward),
             )
-            torch_func = type('_%s_TORCH_FUNC' % op_name,
-                              (op, torch.autograd.Function),
-                              torch_func_dict)
+            torch_func = type(
+                f'_{op_name}_TORCH_FUNC',
+                (op, torch.autograd.Function),
+                torch_func_dict,
+            )
             return torch_func
 
         def get_torch_nn_module(op, torch_func):
@@ -124,9 +125,11 @@ class OpGen(object):
 
             torch_nn_module_dict.update(INPUT_FUNCS)
 
-            torch_nn_module = type('_%s_TORCH_NN_MODULE' % op_name,
-                                   (op, torch.nn.Module),
-                                   torch_nn_module_dict)
+            torch_nn_module = type(
+                f'_{op_name}_TORCH_NN_MODULE',
+                (op, torch.nn.Module),
+                torch_nn_module_dict,
+            )
             return torch_nn_module
 
         torch_func = get_torch_func(op)

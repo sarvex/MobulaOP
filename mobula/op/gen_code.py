@@ -21,8 +21,9 @@ class CodeGenerator:
             i = span[1]
             name = m.groups()[0]
             if name not in kwargs:
-                raise Exception('There are some variables which are assigned:\n{} in {}'.format(
-                    name, self.fname))
+                raise Exception(
+                    f'There are some variables which are assigned:\n{name} in {self.fname}'
+                )
             code += str(kwargs[name])
         code += self.code[i:]
         return code

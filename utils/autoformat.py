@@ -2,7 +2,7 @@ import os
 import json
 
 INFO_FNAME = './AUTOFORMAT.json'
-INFO_DICT = dict()
+INFO_DICT = {}
 
 
 def load_info_dict():
@@ -57,7 +57,7 @@ def update_file_hash(fname):
 def clang_format(fnames):
     for fname in fnames:
         if file_is_changed(fname):
-            print('Format {}'.format(fname))
+            print(f'Format {fname}')
             script = 'clang-format -style="{BasedOnStyle: Google, Standard: Cpp11}" -i ' + fname
             os.system(script)
             update_file_hash(fname)
@@ -66,8 +66,8 @@ def clang_format(fnames):
 def autopep8(fnames):
     for fname in fnames:
         if file_is_changed(fname):
-            print('Format {}'.format(fname))
-            os.system('autopep8 --ignore E402 --in-place {}'.format(fname))
+            print(f'Format {fname}')
+            os.system(f'autopep8 --ignore E402 --in-place {fname}')
             update_file_hash(fname)
 
 

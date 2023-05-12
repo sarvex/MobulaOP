@@ -11,7 +11,7 @@ HASH_FILENAME = 'mobula_op.hash.cache'
 GRAPH_FILENAME = 'mobula_op.graph.cache'
 HASH_FILE_BUFFER = defaultdict(dict)
 GRAPH_FILE_BUFFER = defaultdict(dict)
-FILE_CHANGED_STATE = dict()
+FILE_CHANGED_STATE = {}
 
 
 def _read_hash_file(fname):
@@ -30,7 +30,7 @@ def _read_hash_file(fname):
         with open(fname, 'r') as fin:
             data = json.load(fin)
     else:
-        data = dict()
+        data = {}
     HASH_FILE_BUFFER[fname] = data
     return data
 
@@ -49,7 +49,7 @@ def _read_graph_file(fname):
         with open(fname, 'r') as fin:
             data = json.load(fin)
     else:
-        data = dict()
+        data = {}
     GRAPH_FILE_BUFFER[fname] = data
     return data
 
@@ -99,7 +99,7 @@ def code_need_to_rebuild(source):
         graph_buf[UPDATED_FLAG] = True
         graph_buf[source] = graph
     # check graph
-    change_state = dict()
+    change_state = {}
     # find all changed file
     files = []
     for k, vs in graph.items():
@@ -117,7 +117,7 @@ def code_need_to_rebuild(source):
         for v in graph[fname]:
             if change_state[v] is None:
                 q.put(v)
-    for k in change_state.keys():
+    for k in change_state:
         if change_state[k] is None:
             change_state[k] = False
     changed = change_state[source]

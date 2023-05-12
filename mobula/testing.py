@@ -19,15 +19,13 @@ def to_numpy(data):
         return data.numpy()
     if isinstance(data, (list, tuple)):
         return np.array(data)
-    raise TypeError('Unsupported Type: {}'.format(type(data)))
+    raise TypeError(f'Unsupported Type: {type(data)}')
 
 
 def to_tuple(data):
     if isinstance(data, tuple):
         return data
-    if isinstance(data, list):
-        return tuple(data)
-    return (data, )
+    return tuple(data) if isinstance(data, list) else (data, )
 
 
 def assert_almost_equal(a, b, rtol=1e-5, atol=1e-8):
@@ -38,6 +36,7 @@ def assert_almost_equal(a, b, rtol=1e-5, atol=1e-8):
             else:
                 return np.array(a)
         return data
+
     a = check_value(a, b)
     b = check_value(b, a)
     a = to_numpy(a)
@@ -92,12 +91,11 @@ def assert_almost_equal(a, b, rtol=1e-5, atol=1e-8):
         raise AssertionError(out)
 
     # Check Absolute Error
-    if atol is not None:
-        if max_abs_error > atol:
-            # If absolute error >= atol, raise AssertionError,
-            idx = abs_error.argmax()
-            raise_error(abs_error, 'Maximum Absolute Error({}) > atol({}): {} vs {}'.
-                        format(max_abs_error, atol, a.ravel()[idx], b.ravel()[idx]))
+    if atol is not None and max_abs_error > atol:
+        # If absolute error >= atol, raise AssertionError,
+        idx = abs_error.argmax()
+        raise_error(abs_error, 'Maximum Absolute Error({}) > atol({}): {} vs {}'.
+                    format(max_abs_error, atol, a.ravel()[idx], b.ravel()[idx]))
 
     # Compute Relative Error |(a-b)/b|
     try:
@@ -116,13 +114,13 @@ def assert_almost_equal(a, b, rtol=1e-5, atol=1e-8):
 
 
 def assert_file_exists(fname):
-    assert os.path.exists(fname), IOError("{} not found".format(fname))
+    assert os.path.exists(fname), IOError(f"{fname} not found")
 
 
 def gradcheck(func, inputs, kwargs=None, eps=1e-6, rtol=1e-2, atol=None, sampling=None):
     assert isinstance(func, MobulaOperator)
     if kwargs is None:
-        kwargs = dict()
+        kwargs = {}
     assert isinstance(kwargs, dict)
     if not isinstance(inputs, (tuple, list)):
         inputs = (inputs, )
@@ -133,7 +131,7 @@ def gradcheck(func, inputs, kwargs=None, eps=1e-6, rtol=1e-2, atol=None, samplin
     assert isinstance(ori_out, (tuple, list)), type(ori_out)
     dys = [np.random.normal(0, 0.01, size=out_i.shape).astype(out_i.dtype) +
            0.1 for out_i in ori_out]
-    assert len(dys) == len(ori_out), '{} vs {}'.format(len(dys), len(ori_out))
+    assert len(dys) == len(ori_out), f'{len(dys)} vs {len(ori_out)}'
     grad = to_tuple(func.backward(copy.deepcopy(dys)))
     for i, x in enumerate(inputs):
         size = inputs[i].size
@@ -141,10 +139,7 @@ def gradcheck(func, inputs, kwargs=None, eps=1e-6, rtol=1e-2, atol=None, samplin
         sample_grad_ravel = sample_grad.ravel()
         samples = np.arange(size)
         if sampling is not None:
-            if isinstance(sampling, int):
-                num_samples = sampling
-            else:
-                num_samples = int(sampling * size)
+            num_samples = sampling if isinstance(sampling, int) else int(sampling * size)
             samples = np.random.choice(samples, min(size, num_samples))
         for k in samples:
             x_ravel = x.ravel()

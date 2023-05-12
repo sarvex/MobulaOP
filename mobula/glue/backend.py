@@ -1,11 +1,12 @@
 """Backend Manager."""
+
 import importlib
 from itertools import chain
 from .common import MobulaTensor
 
-DTYPE_TO_GLUE = dict()  # dtype -> glue_mod
-GLUE_NAME_TO_GLUE = dict()  # glue_name -> glue_mod
-PKG_NAME_TO_GLUE_ARGS = dict()  # package_name -> (glue_name, types_name)
+DTYPE_TO_GLUE = {}
+GLUE_NAME_TO_GLUE = {}
+PKG_NAME_TO_GLUE_ARGS = {}
 
 
 def _register_glue_real(glue_name, types_name):
@@ -14,7 +15,7 @@ def _register_glue_real(glue_name, types_name):
         types_name = [types_name]
     glue = None
     try:
-        glue = importlib.import_module('.' + glue_name + '_glue', __package__)
+        glue = importlib.import_module(f'.{glue_name}_glue', __package__)
     except ImportError:
         pass
     if glue is not None:
@@ -27,7 +28,7 @@ def _register_glue_real(glue_name, types_name):
                     if module is None:
                         raise ImportError
                 # create generators cache
-                glue.gen_cache = dict()
+                glue.gen_cache = {}
                 DTYPE_TO_GLUE[module] = glue
             except ImportError:
                 pass
@@ -38,12 +39,13 @@ def _register_glue_real(glue_name, types_name):
                 assert isinstance(value, type) and issubclass(
                     value, MobulaTensor)
             else:
-                # register glue tensor
-                tensors = []
-                for key, value in glue.__dict__.items():
-                    if isinstance(value, type) and issubclass(value, MobulaTensor):
-                        if key.lower() == glue_name + 'tensor':
-                            tensors.append(key)
+                tensors = [
+                    key
+                    for key, value in glue.__dict__.items()
+                    if isinstance(value, type)
+                    and issubclass(value, MobulaTensor)
+                    and key.lower() == f'{glue_name}tensor'
+                ]
                 assert len(
                     tensors) == 1, 'Only one MobulaTensor is allowed in each glue module'
                 glue.Tensor = getattr(glue, tensors[0])
@@ -66,7 +68,8 @@ def register_glue(glue_name, type_names):
     pkg_names = [cls_name.split('.')[0] for cls_name in type_names]
     pkg_name = pkg_names[0]
     assert all(map(lambda x: x == pkg_name, pkg_names)), TypeError(
-        'The name of package should be consistent in `types_name`: {}'.format(type_names))
+        f'The name of package should be consistent in `types_name`: {type_names}'
+    )
     PKG_NAME_TO_GLUE_ARGS[pkg_name] = (glue_name, type_names)
 
 
@@ -129,12 +132,11 @@ def get_args_glue(*args, **kwargs):
     Glue Module if glue exists, otherwise None.
     """
     glue_mods = map(get_var_glue, chain(args, kwargs.values()))
-    glue_mods = list(filter(lambda x: x is not None, glue_mods))
-    if glue_mods:
+    if glue_mods := list(filter(lambda x: x is not None, glue_mods)):
         glue_mod = glue_mods[0]
-        assert all(map(lambda x: x == glue_mod, glue_mods)),\
-            TypeError(
-                'Support only 1 backend in a call, now: {}'.format(glue_mods))
+        assert all(map(lambda x: x == glue_mod, glue_mods)), TypeError(
+            f'Support only 1 backend in a call, now: {glue_mods}'
+        )
         return glue_mod
     return None
 

@@ -33,12 +33,13 @@ class Config:
     def __setattr__(self, name, value):
         data = self.__dict__.get(name, None)
         if data is None:
-            raise AttributeError("Config has no attribute '{}'".format(name))
+            raise AttributeError(f"Config has no attribute '{name}'")
         target_type = type(data)
         value_type = type(value)
         if target_type is not value_type:
-            raise TypeError('The type of config attribute `{}` is not consistent, target {} vs value {}.'.format(
-                name, target_type, value_type))
+            raise TypeError(
+                f'The type of config attribute `{name}` is not consistent, target {target_type} vs value {value_type}.'
+            )
         self.__dict__[name] = value
 
 
@@ -48,13 +49,12 @@ config = Config()
 class TempConfig:
     def __init__(self, **kwargs):
         self.kwargs = kwargs
-        self.old_config = dict()
+        self.old_config = {}
 
     def __enter__(self):
         for k, v in self.kwargs.items():
             if not hasattr(config, k):
-                raise AttributeError(
-                    "'mobula.config' object has no attribute '{}'".format(k))
+                raise AttributeError(f"'mobula.config' object has no attribute '{k}'")
             self.old_config[k] = getattr(config, k)
             setattr(config, k, v)
 

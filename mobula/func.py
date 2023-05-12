@@ -25,10 +25,9 @@ def get_func_idcode(func_name, arg_types):
         IDCode
     """
     arg_types_str = ','.join([e.cname for e in arg_types])
-    idcode = '{func_name}:{arg_types_str}'.format(
-        func_name=func_name,
-        arg_types_str=arg_types_str)
-    return idcode
+    return '{func_name}:{arg_types_str}'.format(
+        func_name=func_name, arg_types_str=arg_types_str
+    )
 
 
 def get_idcode_hash(idcode):
@@ -47,7 +46,7 @@ def get_idcode_hash(idcode):
     func_name = idcode_sp[0]
     md5 = hashlib.md5()
     md5.update(idcode[len(func_name) + 1:].encode('utf-8'))
-    return '{}_{}'.format(func_name, md5.hexdigest()[:8])
+    return f'{func_name}_{md5.hexdigest()[:8]}'
 
 
 class CFuncTensor:
@@ -128,10 +127,10 @@ class CFuncDef:
                  template_list=None, loader=None, loader_kwargs=None):
         self.func_name = func_name
         self.func_kind = func_kind
-        self.arg_names = arg_names or list()
+        self.arg_names = arg_names or []
         self.arg_types = arg_types
         self.rtn_type = rtn_type
-        self.template_list = template_list or list()
+        self.template_list = template_list or []
         self.loader = loader
         self.loader_kwargs = loader_kwargs
 
@@ -157,8 +156,7 @@ class CFuncDef:
         elif self.func_kind == CFuncDef.FUNC:
             out = func(*raw_pointers)
         else:
-            raise TypeError(
-                'Unsupported func kind: {}'.format(self.func_kind))
+            raise TypeError(f'Unsupported func kind: {self.func_kind}')
         for target, value in mutable_vars:
             target[:] = value
         return out
@@ -190,14 +188,12 @@ class MobulaFunc:
     def __call__(self, *args, **kwargs):
         # move kwargs into args
         args = list(args)
-        for name in self.func.arg_names[len(args):]:
-            args.append(kwargs[name])
-
+        args.extend(kwargs[name] for name in self.func.arg_names[len(args):])
         # type check
         arg_datas = []
         dev_id = None
         arg_types = []
-        template_mapping = dict()
+        template_mapping = {}
 
         glue_mod = self._get_glue_mod(args)
         using_async = config.USING_ASYNC_EXEC and glue_mod is not None and hasattr(
@@ -236,33 +232,34 @@ class MobulaFunc:
                     # pointer
                     arg_types.append(DType(ctype, is_const=ptype.is_const))
 
-                # update `dev_id`
                 if var_dev_id is not None:
-                    if dev_id is not None:
-                        assert var_dev_id == dev_id, ValueError(
-                            "Don't use multiple devices in a call :-(")
-                    else:
+                    if dev_id is None:
                         dev_id = var_dev_id
 
+                    else:
+                        assert var_dev_id == dev_id, ValueError(
+                            "Don't use multiple devices in a call :-(")
             # try to know the unknown ctype
             for i, vtype in enumerate(arg_types):
                 if isinstance(vtype, UnknownCType):
-                    assert vtype.tname in template_mapping,\
-                        Exception(
-                            'Unknown template name: {}'.format(vtype.tname))
+                    assert vtype.tname in template_mapping, Exception(
+                        f'Unknown template name: {vtype.tname}'
+                    )
                     ctype = template_mapping[vtype.tname]._type_
                     arg_types[i] = DType(ctype, vtype.is_const)
                     arg_datas[i] = ctype(arg_datas[i])
         except TypeError:
-            raise TypeError('Unmatched parameters list of the function `{}`:\n\t{}\n\t\tvs\n\t{}'.format(
-                self.name, self.func.arg_types, list(map(type, args))))
+            raise TypeError(
+                f'Unmatched parameters list of the function `{self.name}`:\n\t{self.func.arg_types}\n\t\tvs\n\t{list(map(type, args))}'
+            )
 
-        rtn = self.func(arg_datas=arg_datas,
-                        arg_types=arg_types,
-                        dev_id=dev_id,
-                        glue_mod=glue_mod,
-                        using_async=using_async)
-        return rtn
+        return self.func(
+            arg_datas=arg_datas,
+            arg_types=arg_types,
+            dev_id=dev_id,
+            glue_mod=glue_mod,
+            using_async=using_async,
+        )
 
     @staticmethod
     def _get_tensor_info(var, ptype, template_mapping, using_async=False):
@@ -300,9 +297,9 @@ class MobulaFunc:
             expected_ctype = template_mapping[ptype.tname]
         else:
             template_mapping[ptype.tname] = expected_ctype = ctype
-        assert ctype == expected_ctype,\
-            TypeError('Expected Type {} instead of {}'.format(
-                expected_ctype, ctype))
+        assert ctype == expected_ctype, TypeError(
+            f'Expected Type {expected_ctype} instead of {ctype}'
+        )
         return data, dev_id, ctype
 
     @staticmethod
@@ -340,8 +337,7 @@ class MobulaFunc:
     @staticmethod
     def _get_glue_mod(datas):
         mods = map(glue.backend.get_var_glue, datas)
-        mods = list(filter(lambda x: x is not None, mods))
-        if mods:
+        if mods := list(filter(lambda x: x is not None, mods)):
             glue_mod = mods[0]
             # all glue modules in datas are consistent
             if all(map(lambda x: x == glue_mod, mods)):
@@ -367,17 +363,16 @@ class MobulaFunc:
         arg_types = []
         par_type = self.func.arg_types
         if template_types is None:
-            template_types = list()
+            template_types = []
         if isinstance(template_types, (list, tuple)):
-            template_mapping = dict()  # tname -> ctype
+            template_mapping = {}
             for vtype in par_type:
                 if isinstance(vtype, TemplateType):
                     tname = vtype.tname
                     if tname in template_mapping:
                         ctype = template_mapping[tname]
                     else:
-                        ctype = getattr(ctypes, 'c_{}'.format(
-                            template_types.pop(0)))
+                        ctype = getattr(ctypes, f'c_{template_types.pop(0)}')
                         template_mapping[tname] = ctype
                     arg_types.append(vtype(ctype))
                 else:
@@ -390,22 +385,20 @@ class MobulaFunc:
             for vtype in par_type:
                 if isinstance(vtype, TemplateType):
                     tname = vtype.tname
-                    assert tname in template_types, KeyError(
-                        'Unknown Template Type: {}'.format(tname))
+                    assert tname in template_types, KeyError(f'Unknown Template Type: {tname}')
                     template_name.add(tname)
-                    ctype = getattr(ctypes, 'c_{}'.format(
-                        template_types[tname]))
+                    ctype = getattr(ctypes, f'c_{template_types[tname]}')
                     arg_types.append(vtype(ctype))
                 else:
                     arg_types.append(vtype)
             assert len(template_name) == len(template_types), Exception(
-                'Different template name: {} vs {}'.format(
-                    template_name, set(template_types.keys())))
+                f'Different template name: {template_name} vs {set(template_types.keys())}'
+            )
         func = self.func
         func.loader(func, arg_types, ctx, **func.loader_kwargs)
 
 
-_binded_functions = dict()
+_binded_functions = {}
 
 
 def bind(functions):
@@ -419,7 +412,7 @@ def bind(functions):
     """
     for k, func in functions.items():
         if k in _binded_functions:
-            warnings.warn('Duplicated function name {}'.format(k))
+            warnings.warn(f'Duplicated function name {k}')
         func = MobulaFunc(k, func)
         globals()[k] = func
         _binded_functions[k] = func

@@ -38,8 +38,7 @@ def test_roi_align_sym(op, times):
         res = exe.outputs[0].asnumpy()
         exe.backward()
         mx.nd.waitall()
-    cost = time.time() - tic
-    return cost
+    return time.time() - tic
 
 
 def test_roi_align():

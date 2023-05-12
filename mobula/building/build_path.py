@@ -11,8 +11,9 @@ def get_virtual_dirname(path):
     dirname, basename = os.path.split(path)
     # hash dirname
     hash_dirname = path_hash(dirname)
-    new_path = os.path.normpath(os.path.join(
-        config.BUILD_PATH, 'build', '{}_{}'.format(basename, hash_dirname)))
+    new_path = os.path.normpath(
+        os.path.join(config.BUILD_PATH, 'build', f'{basename}_{hash_dirname}')
+    )
     makedirs(new_path, exist_ok=True)
     tag_fname = os.path.join(new_path, 'ORIGINAL_PATH')
     if not os.path.exists(tag_fname):
@@ -30,7 +31,7 @@ def change_exts(lst, rules):
             ext = sp[1][1:]
             if ext in mappings:
                 new_ext = mappings[ext]
-                name = sp[0] + '.' + new_ext
+                name = f'{sp[0]}.{new_ext}'
         res.append(name)
     return res
 

@@ -59,8 +59,7 @@ else:
         -------
         Module
         """
-        module = imp.load_source(name, pathname)
-        return module
+        return imp.load_source(name, pathname)
 
 
 def _get_func_head_reg(name):
@@ -75,7 +74,7 @@ def _get_func_head_reg(name):
     -------
     A pattern object
     """
-    return re.compile(r'^\s*{}\s*(.*)'.format(name))
+    return re.compile(f'^\s*{name}\s*(.*)')
 
 
 MOBULA_KERNEL_REG = _get_func_head_reg('MOBULA_(KERNEL|FUNC)')
@@ -181,7 +180,7 @@ def parse_parameters_list(plist):
 
 # runtime
 FuncInfo = namedtuple('FuncInfo', ['func', 'cpp_info'])
-CTX_FUNC_MAP = dict()  # CTX_FUNC_MAP[ctx][cpp_fname] -> FuncInfo
+CTX_FUNC_MAP = {}
 
 
 class CPPInfo:
@@ -195,7 +194,7 @@ class CPPInfo:
 
     def __init__(self, cpp_fname):
         self.cpp_fname = cpp_fname
-        self.function_args = dict()
+        self.function_args = {}
         self.dll = None
 
     def load_dll(self, dll_fname):
@@ -227,8 +226,9 @@ def _build_lib(cpp_fname, code_buffer, ctx, target_name):
     makedirs(build_path_ctx, exist_ok=True)
 
     # build so
-    cpp_wrapper_fname = os.path.join(build_path_ctx,
-                                     os.path.splitext(cpp_basename)[0] + '_wrapper.cpp')
+    cpp_wrapper_fname = os.path.join(
+        build_path_ctx, f'{os.path.splitext(cpp_basename)[0]}_wrapper.cpp'
+    )
     with open(cpp_wrapper_fname, 'w') as fout:
         fout.write(extra_code)
     # build lib
@@ -240,9 +240,7 @@ def _build_lib(cpp_fname, code_buffer, ctx, target_name):
 def _dtype_to_tvm_value_type(dtype):
     if dtype.is_pointer:
         return 'v_handle'
-    if 'int' in dtype.cname:
-        return 'v_int64'
-    return 'v_float64'
+    return 'v_int64' if 'int' in dtype.cname else 'v_float64'
 
 
 def _get_args_inst_mx(i, t):
@@ -280,10 +278,11 @@ def _generate_kernel_code(func_idcode_hash, arg_types, arg_names, func_name):
     if using_async_mx:
         args_inst_mx = [_get_args_inst_mx(i, t)
                         for i, t in enumerate(arg_types)]
-        const_loc = []
-        for i, dtype in enumerate(arg_types):
-            if dtype.is_const and dtype.is_pointer:
-                const_loc.append(i)
+        const_loc = [
+            i
+            for i, dtype in enumerate(arg_types)
+            if dtype.is_const and dtype.is_pointer
+        ]
         num_const = len(const_loc)
         const_loc_code = 'nullptr' if num_const == 0 else 'std::array<int, %d>({%s}).data()' % (
             num_const, ','.join([str(u) for u in const_loc]))
@@ -311,7 +310,7 @@ def _generate_func_code(func_idcode_hash, rtn_type, arg_types, arg_names, func_n
     ) for dtype, name in zip(arg_types, arg_names)])
     args_inst = ', '.join(arg_names)
 
-    code = gen_code('./templates/func_code.cpp')(
+    return gen_code('./templates/func_code.cpp')(
         return_value=rtn_type,
         return_statement='' if rtn_type == 'void' else 'return',
         func_idcode_hash=func_idcode_hash,
@@ -320,15 +319,13 @@ def _generate_func_code(func_idcode_hash, rtn_type, arg_types, arg_names, func_n
         args_inst=args_inst,
     )
 
-    return code
-
 
 def _update_template_inst_map(idcode, template_functions, cfunc, arg_types):
     # template function
     func_name = cfunc.func_name
     func_idcode_hash = get_idcode_hash(idcode)
     # Check Template Type Mapping
-    template_mapping = dict()
+    template_mapping = {}
     for rtype, dtype in zip(arg_types, cfunc.arg_types):
         if not isinstance(dtype, TemplateType):
             continue
@@ -336,27 +333,30 @@ def _update_template_inst_map(idcode, template_functions, cfunc, arg_types):
         rtype = str(rtype).replace(
             'const', '').replace('*', '').strip()
         if tname in template_mapping:
-            assert template_mapping[tname] == rtype,\
-                Exception('Excepted template type {} instead of {}'.
-                          format(template_mapping[tname], rtype))
+            assert template_mapping[tname] == rtype, Exception(
+                f'Excepted template type {template_mapping[tname]} instead of {rtype}'
+            )
         else:
             template_mapping[tname] = rtype
-    assert len(template_mapping) == len(cfunc.template_list),\
-        Exception('Template List: {}, mapping: {}'.
-                  format(cfunc.template_list, template_mapping))
+    assert len(template_mapping) == len(cfunc.template_list), Exception(
+        f'Template List: {cfunc.template_list}, mapping: {template_mapping}'
+    )
 
     template_inst = [template_mapping[tname]
                      for tname in cfunc.template_list]
-    template_post = '<%s>' % (', '.join(template_inst)
-                              ) if template_inst else ''
+    template_post = f"<{', '.join(template_inst)}>" if template_inst else ''
     rtn_type = cfunc.rtn_type
     if rtn_type in template_mapping:
         rtn_type = template_mapping[rtn_type]
 
     func_kind = cfunc.func_kind
     if func_kind == CFuncDef.KERNEL:
-        code = _generate_kernel_code(func_idcode_hash, arg_types, cfunc.arg_names, '({}_kernel{})'.format(
-            func_name, template_post))
+        code = _generate_kernel_code(
+            func_idcode_hash,
+            arg_types,
+            cfunc.arg_names,
+            f'({func_name}_kernel{template_post})',
+        )
     else:
         code = _generate_func_code(
             func_idcode_hash, rtn_type, arg_types, cfunc.arg_names, func_name + template_post)
@@ -369,15 +369,19 @@ def _add_function(func_map, func_idcode, rtn_type, cpp_info, dll_fname):
     if func is None:
         functions = [name for name in dir(
             cpp_info.dll) if not name.startswith('_')]
-        raise NameError('No function `{}` in DLL {}, current functions: {}'.format(
-            func_idcode, dll_fname, functions))
+        raise NameError(
+            f'No function `{func_idcode}` in DLL {dll_fname}, current functions: {functions}'
+        )
     func.restype = CTYPENAME2CTYPE[rtn_type]
 
     old_func = func_map.get(func_idcode, None)
-    if old_func is not None:
-        if old_func.cpp_info.cpp_fname != cpp_info.cpp_fname:
-            warnings.warn('The function `{}` in `{}` will be overridden by that in `{}`'.format(
-                func_idcode, old_func.cpp_info.cpp_fname, cpp_info.cpp_fname))
+    if (
+        old_func is not None
+        and old_func.cpp_info.cpp_fname != cpp_info.cpp_fname
+    ):
+        warnings.warn(
+            f'The function `{func_idcode}` in `{old_func.cpp_info.cpp_fname}` will be overridden by that in `{cpp_info.cpp_fname}`'
+        )
 
     func_map[func_idcode] = FuncInfo(func=func, cpp_info=cpp_info)
 
@@ -405,10 +409,10 @@ class OpLoader:
     def __init__(self, cfunc, arg_types, ctx, cpp_info):
         idcode = get_func_idcode(cfunc.func_name, arg_types)
         if ctx not in CTX_FUNC_MAP:
-            CTX_FUNC_MAP[ctx] = dict()
+            CTX_FUNC_MAP[ctx] = {}
         cpp_fname = cpp_info.cpp_fname
         if cpp_fname not in CTX_FUNC_MAP[ctx]:
-            CTX_FUNC_MAP[ctx][cpp_fname] = dict()
+            CTX_FUNC_MAP[ctx][cpp_fname] = {}
         # func_map: dict mapping idcode to CFunction
         func_map = CTX_FUNC_MAP[ctx][cpp_fname]
 
@@ -425,7 +429,8 @@ class OpLoader:
             use_template = bool(cfunc.template_list)
             makedirs(build_path, exist_ok=True)
             build_info_fname = os.path.join(
-                build_path, os.path.splitext(cpp_basename)[0] + '.json')
+                build_path, f'{os.path.splitext(cpp_basename)[0]}.json'
+            )
             build_info_fs = open(build_info_fname, 'a+')
             portalocker.lock(build_info_fs, portalocker.LOCK_EX)
             build_info_fs.seek(0)
@@ -449,10 +454,9 @@ Please update MobulaOP.""" % (map_data.get('version'), OP_LOAD_MODULE_BUILD_VERS
             # load the information of template functions
             TEMPLATE_FUNCTION_NAME = 'functions'
             if is_old_version:
-                template_functions = dict()
+                template_functions = {}
             else:
-                template_functions = map_data.get(
-                    TEMPLATE_FUNCTION_NAME, dict())
+                template_functions = map_data.get(TEMPLATE_FUNCTION_NAME, {})
 
             so_prefix = os.path.join(
                 cpp_path, 'build', os.path.splitext(cpp_basename)[0])

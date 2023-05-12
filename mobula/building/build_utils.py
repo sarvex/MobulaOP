@@ -27,8 +27,9 @@ from .build_latest_code import file_is_changed, code_need_to_rebuild, save_lates
 OS_NAME = platform.system()
 OS_IS_WINDOWS = OS_NAME == 'Windows'
 OS_IS_LINUX = OS_NAME in ['Linux', 'Darwin']
-assert OS_IS_WINDOWS or OS_IS_LINUX,\
-    Exception('Unsupported Operator System: {}'.format(OS_NAME))
+assert OS_IS_WINDOWS or OS_IS_LINUX, Exception(
+    f'Unsupported Operator System: {OS_NAME}'
+)
 
 INC_PATHS = ['./']
 
@@ -41,7 +42,7 @@ if os.path.dirname(config.BUILD_PATH) == '.':
 def mkdir(dir_name):
     if not os.path.exists(dir_name):
         if config.SHOW_BUILDING_COMMAND:
-            print('mkdir -p %s' % dir_name)
+            print(f'mkdir -p {dir_name}')
         makedirs(dir_name, exist_ok=True)
 
 
@@ -54,7 +55,7 @@ elif OS_IS_WINDOWS:
 def rmdir(dir_name):
     # we use shell command to remove the non-empty or empry directory
     if os.path.exists(dir_name):
-        command = '%s %s' % (_rmdir_command, dir_name)
+        command = f'{_rmdir_command} {dir_name}'
         run_command(command)
 
 

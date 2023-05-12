@@ -19,16 +19,14 @@ class CuPyTensor(MobulaTensor):
 
     @property
     def dev_id(self):
-        if isinstance(self.tensor, cp.ndarray):
-            return self.tensor.device.id
-        return None
+        return self.tensor.device.id if isinstance(self.tensor, cp.ndarray) else None
 
 
 class OpGen(object):
     def __init__(self, op, name):
         self.op = op
         self.name = name
-        self.cache = dict()
+        self.cache = {}
 
     def __call__(self, *args, **kwargs):
         if self.name not in self.cache:
@@ -53,9 +51,7 @@ class OpGen(object):
                     out = [out]
                 for i, x in enumerate(out):
                     self.assign(self.out_data[i], self.req[i], x)
-            if len(self.out_data) == 1:
-                return self.out_data[0]
-            return self.out_data
+            return self.out_data[0] if len(self.out_data) == 1 else self.out_data
 
         def backward(self, out_grad=None, in_data=None, out_data=None, in_grad=None, req=None):
 
@@ -86,7 +82,7 @@ class OpGen(object):
                 self.req = ['write' for _ in self.in_data]
             else:
                 assert len(req) == len(self.in_data),\
-                    ValueError('len(req) should be %d' % len(self.in_data))
+                        ValueError('len(req) should be %d' % len(self.in_data))
                 self.req = req
             out = self._backward(*out_grad)
             if out is not None:
@@ -95,9 +91,7 @@ class OpGen(object):
                 num_inputs = len(get_varnames(self._forward))
                 for i in range(num_inputs):
                     self.assign(in_grad[i], self.req[i], out[i])
-            if len(in_grad) == 1:
-                return in_grad[0]
-            return self.in_grad
+            return in_grad[0] if len(in_grad) == 1 else self.in_grad
 
         np_op_dict = dict(
             __call__=forward,
@@ -113,9 +107,7 @@ class OpGen(object):
         if hasattr(self.op, '__init__'):
             np_op_dict['__init__'] = self.op.__init__
         np_op_dict.update(INPUT_FUNCS)
-        np_op = type('_%s_CP_OP' % self.name,
-                     (self.op, object),
-                     np_op_dict)
+        np_op = type(f'_{self.name}_CP_OP', (self.op, object), np_op_dict)
         return np_op
 
 

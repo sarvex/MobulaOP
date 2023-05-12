@@ -60,9 +60,9 @@ def get_varnames(func):
     return getargspec(func).args[1:]
 
 
-CUSTOM_OP_LIST = dict()
+CUSTOM_OP_LIST = {}
 OP_MODULE_GLOBALS = None
-CSTRUCT_CONSTRUCTOR = dict()
+CSTRUCT_CONSTRUCTOR = {}
 
 
 def get_in_data(*args, **kwargs):
@@ -90,7 +90,7 @@ def get_in_data(*args, **kwargs):
         # the rest of parameters
         for i in range(len(args), num_inputs - num_defaults):
             name = input_names[i]
-            assert name in kwargs, "Variable %s not found" % name
+            assert name in kwargs, f"Variable {name} not found"
             inputs[i] = kwargs.pop(name)
         num_valid_inputs = num_inputs - num_defaults
         for i in range(num_inputs - num_defaults, num_inputs):
@@ -178,7 +178,7 @@ class MobulaOperator:
         glue_mod = backend.get_args_glue(*args, **kwargs)
         assert glue_mod is not None, ValueError('No explict backend')
         new_kwargs = kwargs.copy()
-        new_kwargs.update(self.attrs)
+        new_kwargs |= self.attrs
         return backend.op_gen(glue_mod, op=self.op, name=self.name)(*args, **new_kwargs)
 
     def __getitem__(self, input_type):
@@ -197,8 +197,7 @@ class MobulaOperator:
 def register_cstruct(name, cstruct, constructor=None):
     if constructor is None:
         constructor = cstruct
-    assert callable(
-        constructor), 'constructor {} should be callable'.format(name)
+    assert callable(constructor), f'constructor {name} should be callable'
     CSTRUCT_CONSTRUCTOR[name] = (cstruct, constructor)
 
 
@@ -247,7 +246,6 @@ try:
     import numpy as np
 
     def _get_numpy_type():
-        name2ctype = dict()
         pairs = [
             (np.dtype('int8'), ctypes.c_int8),
             (np.dtype('int16'), ctypes.c_int16),
@@ -256,9 +254,7 @@ try:
             (np.dtype('float32'), ctypes.c_float),
             (np.dtype('float64'), ctypes.c_double),  # alias: np.float
         ]
-        for dtype, ctype in pairs:
-            name2ctype[dtype.name] = ctype
-        return name2ctype
+        return {dtype.name: ctype for dtype, ctype in pairs}
     NP_DTYPE_NAME2CTYPE = _get_numpy_type()
 
     def NPDTYPE2CTYPE(dtype):
@@ -273,7 +269,7 @@ try:
         ctype
         """
         ctype = NP_DTYPE_NAME2CTYPE.get(np.dtype(dtype).name, None)
-        assert ctype is not None, TypeError('Unknown Type: {}'.format(dtype))
+        assert ctype is not None, TypeError(f'Unknown Type: {dtype}')
         return ctype
 except ImportError:
     pass
